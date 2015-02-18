@@ -24,8 +24,8 @@
             </div>
             <div class="navbar-collapse collapse">
                 <ul class="nav navbar-nav navbar-right">
-                    <li><button class="btn btn-link" ng-show="userInfo.isAuthenticated" ng-click="logout()">Logout</button></li>
-                    <li><button class="btn btn-link" ng-hide="userInfo.isAuthenticated" ng-click="login()">Login</button></li>
+                    <li><button class="btn btn-link" data-ng-hide="!userInfo.isAuthenticated" data-ng-click="logout()">Logout</button></li>
+                    <li><button class="btn btn-link" data-ng-hide="userInfo.isAuthenticated" data-ng-click="login()">Login</button></li>
                 </ul>
             </div>
         </div>
@@ -39,11 +39,12 @@
         </div>
        
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
-        <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.25/angular.min.js"></script>
-        <script src="https://code.angularjs.org/1.2.25/angular-route.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.13/angular.min.js"></script>
+        <script src="https://code.angularjs.org/1.3.13/angular-route.js"></script>
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
-        <script src="scripts/angular-ui-bootstrap.js"></script>
+       
         <script src="scripts/adal.js"></script>
+        <script src="scripts/adal-angular.js"></script>
         <script src="scripts/angularApp.js"></script>
         <script src="scripts/homeCtrl.js"></script>
         <script src="scripts/searchCtrl.js"></script>

@@ -34,8 +34,8 @@
     <Compile Include="app.js" />
     <Compile Include="config.js" />
     <Compile Include="public\fonts\icomoon-pack-madmin-1.5\lte-ie7.js" />
+    <Compile Include="public\scripts\adal-angular.js" />
     <Compile Include="public\scripts\adal.js" />
-    <Compile Include="public\scripts\angular-ui-bootstrap.js" />
     <Compile Include="public\scripts\angularApp.js" />
     <Compile Include="public\scripts\homeCtrl.js" />
     <Compile Include="public\scripts\indexCtrl.js" />

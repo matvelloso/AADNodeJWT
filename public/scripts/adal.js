@@ -1,5 +1,5 @@
 ﻿//----------------------------------------------------------------------
-// AdalJS v0.0.3
+// AdalJS v1.0.0
 // @preserve Copyright (c) Microsoft Open Technologies, Inc.
 // All Rights Reserved
 // Apache License 2.0
@@ -21,10 +21,11 @@
 // node.js usage for tests
 var AuthenticationContext;
 if (typeof module !== 'undefined' && module.exports) {
-    var window, localStorage, angular, document;
-    module.exports.inject = function (windowInj, localStorageInj, documentInj, MathInj, angularInj, conf) {
+    var window, localStorage, angular, document, sessionStorage;
+    module.exports.inject = function (windowInj, storageInj, documentInj, MathInj, angularInj, conf) {
         window = windowInj;
-        localStorage = localStorageInj;
+        localStorage = storageInj;
+        sessionStorage = storageInj;
         document = documentInj;
         Math = MathInj; // jshint ignore:line
         angular = angularInj;
@@ -73,6 +74,11 @@ AuthenticationContext = function (config) {
     * @enum {string}
     */
     this.CONSTANTS = {
+        ACCESS_TOKEN: 'access_token',
+        EXPIRES_IN: 'expires_in',
+        ID_TOKEN: 'id_token',
+        ERROR_DESCRIPTION: 'error_description',
+        SESSION_STATE: 'session_state',
         STORAGE: {
             TOKEN_KEYS: 'adal.token.keys',
             ACCESS_TOKEN_KEY: 'adal.access.token.key',
@@ -237,7 +243,7 @@ AuthenticationContext.prototype._renewToken = function (resource, callback) {
 
     var frameHandle = this._addAdalFrame('adalRenewFrame');
     var expectedState = this._guid() + '|' + resource;
-
+    this._idTokenNonce = this._guid();
     this.config.state = expectedState;
     // renew happens in iframe, so it keeps javascript context
     this._renewStates.push(expectedState);
@@ -291,11 +297,13 @@ AuthenticationContext.prototype._loadFrame = function (urlNavigate, frameName) {
     // This trick overcomes iframe navigation in IE
     // IE does not load the page consistently in iframe
     var self = this;
+    self._logstatus('LoadFrame: ' + frameName);
+    var frameCheck = frameName;
     setTimeout(function () {
-        var frameHandle = self._addAdalFrame(frameName);
+        var frameHandle = self._addAdalFrame(frameCheck);
         if (frameHandle.src === '' || frameHandle.src === 'about:blank') {
             frameHandle.src = urlNavigate;
-            self._loadFrame(urlNavigate);
+            self._loadFrame(urlNavigate, frameCheck);
         }
     }, 500);
 };
@@ -518,9 +526,9 @@ AuthenticationContext.prototype.isCallback = function (hash) {
     hash = this._getHash(hash);
     var parameters = this._deserialize(hash);
     return (
-            parameters.hasOwnProperty('error_description') ||
-            parameters.hasOwnProperty('access_token') ||
-            parameters.hasOwnProperty('id_token')
+            parameters.hasOwnProperty(this.CONSTANTS.ERROR_DESCRIPTION) ||
+            parameters.hasOwnProperty(this.CONSTANTS.ACCESS_TOKEN) ||
+            parameters.hasOwnProperty(this.CONSTANTS.ID_TOKEN)
             );
 };
 
@@ -542,9 +550,9 @@ AuthenticationContext.prototype.getRequestInfo = function (hash) {
     var requestInfo = { valid: false, parameters: {}, stateMatch: false, stateResponse: '', requestType: this.REQUEST_TYPE.UNKNOWN };
     if (parameters) {
         requestInfo.parameters = parameters;
-        if (parameters.hasOwnProperty('error_description') ||
-            parameters.hasOwnProperty('access_token') ||
-            parameters.hasOwnProperty('id_token')) {
+        if (parameters.hasOwnProperty(this.CONSTANTS.ERROR_DESCRIPTION) ||
+            parameters.hasOwnProperty(this.CONSTANTS.ACCESS_TOKEN) ||
+            parameters.hasOwnProperty(this.CONSTANTS.ID_TOKEN)) {
 
             requestInfo.valid = true;
 
@@ -613,12 +621,12 @@ AuthenticationContext.prototype.saveTokenFromHash = function (requestInfo) {
     this._saveItem(this.CONSTANTS.STORAGE.ERROR_DESCRIPTION, '');
 
     // Record error
-    if (requestInfo.parameters.hasOwnProperty('error_description')) {
+    if (requestInfo.parameters.hasOwnProperty(this.CONSTANTS.ERROR_DESCRIPTION)) {
         this._logstatus('Error :' + requestInfo.parameters.error);
-        this._logstatus('Error description:' + requestInfo.parameters['error_description']);
-        this._saveItem(this.CONSTANTS.STORAGE.FAILED_RENEW, requestInfo.parameters['error_description']);
+        this._logstatus('Error description:' + requestInfo.parameters[this.CONSTANTS.ERROR_DESCRIPTION]);
+        this._saveItem(this.CONSTANTS.STORAGE.FAILED_RENEW, requestInfo.parameters[this.CONSTANTS.ERROR_DESCRIPTION]);
         this._saveItem(this.CONSTANTS.STORAGE.ERROR, requestInfo.parameters.error);
-        this._saveItem(this.CONSTANTS.STORAGE.ERROR_DESCRIPTION, requestInfo.parameters['error_description']);
+        this._saveItem(this.CONSTANTS.STORAGE.ERROR_DESCRIPTION, requestInfo.parameters[this.CONSTANTS.ERROR_DESCRIPTION]);
 
         if (requestInfo.requestType === this.REQUEST_TYPE.LOGIN) {
             this._loginInProgress = false;
@@ -632,13 +640,13 @@ AuthenticationContext.prototype.saveTokenFromHash = function (requestInfo) {
         if (requestInfo.stateMatch) {
             // record tokens to storage if exists
             this._logstatus('State is right');
-            if (requestInfo.parameters.hasOwnProperty('session_state')) {
-                this._saveItem(this.CONSTANTS.STORAGE.SESSION_STATE, requestInfo.parameters['session_state']);
+            if (requestInfo.parameters.hasOwnProperty(this.CONSTANTS.SESSION_STATE)) {
+                this._saveItem(this.CONSTANTS.STORAGE.SESSION_STATE, requestInfo.parameters[this.CONSTANTS.SESSION_STATE]);
             }
 
             var keys, resource;
 
-            if (requestInfo.parameters.hasOwnProperty('access_token')) {
+            if (requestInfo.parameters.hasOwnProperty(this.CONSTANTS.ACCESS_TOKEN)) {
                 this._logstatus('Fragment has access token');
                 // default resource
                 this._renewActive = false;
@@ -653,19 +661,19 @@ AuthenticationContext.prototype.saveTokenFromHash = function (requestInfo) {
                 }
 
                 // save token with related resource
-                this._saveItem(this.CONSTANTS.STORAGE.ACCESS_TOKEN_KEY + resource, requestInfo.parameters['access_token']);
-                this._saveItem(this.CONSTANTS.STORAGE.EXPIRATION_KEY + resource, this._expiresIn(requestInfo.parameters['expires_in']));
+                this._saveItem(this.CONSTANTS.STORAGE.ACCESS_TOKEN_KEY + resource, requestInfo.parameters[this.CONSTANTS.ACCESS_TOKEN]);
+                this._saveItem(this.CONSTANTS.STORAGE.EXPIRATION_KEY + resource, this._expiresIn(requestInfo.parameters[this.CONSTANTS.EXPIRES_IN]));
             }
 
-            if (requestInfo.parameters.hasOwnProperty('id_token')) {
+            if (requestInfo.parameters.hasOwnProperty(this.CONSTANTS.ID_TOKEN)) {
                 this._loginInProgress = false;
-                this._user = this._createUser(requestInfo.parameters['id_token']);
+                this._user = this._createUser(requestInfo.parameters[this.CONSTANTS.ID_TOKEN]);
                 if (this._user && this._user.profile) {
                     if (this._user.profile.nonce !== this._getItem(this.CONSTANTS.STORAGE.NONCE_IDTOKEN)) {
                         this._user = null;
                         this._saveItem(this.CONSTANTS.STORAGE.LOGIN_ERROR, 'Nonce is not same as ' + this._idTokenNonce);
                     } else {
-                        this._saveItem(this.CONSTANTS.STORAGE.IDTOKEN, requestInfo.parameters['id_token']);
+                        this._saveItem(this.CONSTANTS.STORAGE.IDTOKEN, requestInfo.parameters[this.CONSTANTS.ID_TOKEN]);
 
                         // Save idtoken as access token for app itself
                         resource = this.config.clientId;
@@ -673,7 +681,7 @@ AuthenticationContext.prototype.saveTokenFromHash = function (requestInfo) {
                             keys = this._getItem(this.CONSTANTS.STORAGE.TOKEN_KEYS) || '';
                             this._saveItem(this.CONSTANTS.STORAGE.TOKEN_KEYS, keys + resource + this.CONSTANTS.RESOURCE_DELIMETER);
                         }
-                        this._saveItem(this.CONSTANTS.STORAGE.ACCESS_TOKEN_KEY + resource, requestInfo.parameters['id_token']);
+                        this._saveItem(this.CONSTANTS.STORAGE.ACCESS_TOKEN_KEY + resource, requestInfo.parameters[this.CONSTANTS.ID_TOKEN]);
                         this._saveItem(this.CONSTANTS.STORAGE.EXPIRATION_KEY + resource, this._user.profile.exp);
                     }
                 }
@@ -694,27 +702,11 @@ AuthenticationContext.prototype.saveTokenFromHash = function (requestInfo) {
  * @returns {string} resource for this API endpoint
  */
 AuthenticationContext.prototype.getResourceForEndpoint = function (endpoint) {
-    /*
-       Endpoints defined using this type of syntax in adal.init
-
-       adalProvider.init(
-         {
-            tenant: tenant,
-            clientId: clientId,
-            endpoints: [
-              {
-                   url: 'https://someurl.com/api',
-                   resourceId: 'https://resourceIdUri'
-              }
-         },
-         $httpProvider
-       );
-    */
     if (this.config && this.config.endpoints) {
-        for (var i = 0, len = this.config.endpoints.length; i < len; i++) {
-            var configEndpoint = this.config.endpoints[i];
-            if (endpoint.indexOf(configEndpoint.url) > -1) {
-                return configEndpoint.resourceId;
+        for (var configEndpoint in this.config.endpoints) {
+            // configEndpoint is like /api/Todo requested endpoint can be /api/Todo/1
+            if (endpoint.indexOf(configEndpoint) > -1) {
+                return this.config.endpoints[configEndpoint];
             }
         }
     }
@@ -746,8 +738,9 @@ AuthenticationContext.prototype.handleWindowCallback = function () {
         }
 
         window.location.hash = '';
+        window.location = this._getItem(this.CONSTANTS.STORAGE.LOGIN_REQUEST);
         if (requestInfo.requestType === this.REQUEST_TYPE.RENEW_TOKEN) {
-            callback(this._getItem(this.CONSTANTS.STORAGE.ERROR_DESCRIPTION), requestInfo.parameters['access_token']);
+            callback(this._getItem(this.CONSTANTS.STORAGE.ERROR_DESCRIPTION), requestInfo.parameters[this.CONSTANTS.ACCESS_TOKEN]);
             return;
         } else if (requestInfo.requestType === this.REQUEST_TYPE.ID_TOKEN) {
             // JS context may not have the user if callback page was different, so parse idtoken again to callback
@@ -816,8 +809,9 @@ AuthenticationContext.prototype._extractUserName = function (encodedIdToken) {
 
 AuthenticationContext.prototype._base64DecodeStringUrlSafe = function (base64IdToken) {
     // html5 should support atob function for decoding
+    base64IdToken = base64IdToken.replace(/-/g, '+').replace(/_/g, '/');
     if (window.atob) {
-        return window.atob(base64IdToken);
+        return decodeURIComponent(escape(window.atob(base64IdToken))); // jshint ignore:line
     }
 
     // TODO add support for this
@@ -945,6 +939,10 @@ AuthenticationContext.prototype._now = function () {
 
 
 AuthenticationContext.prototype._addAdalFrame = function (iframeId) {
+    if (typeof iframeId === 'undefined') {
+        return;
+    }
+
     this._logstatus('Add adal frame to document:' + iframeId);
     var adalFrame = document.getElementById(iframeId);
 
@@ -977,28 +975,61 @@ AuthenticationContext.prototype._logstatus = function (msg) {
 };
 
 AuthenticationContext.prototype._saveItem = function (key, obj) {
-    if (!this._supportsLocalStorage()) {
-        this._logStatus('Local storage is not supported');
+
+    if (this.config && this.config.cacheLocation && this.config.cacheLocation === 'localStorage') {
+
+        if (!this._supportsLocalStorage()) {
+            this._logStatus('Local storage is not supported');
+            return false;
+        }
+
+        localStorage.setItem(key, obj);
+
+        return true;
+    }
+
+    // Default as session storage
+    if (!this._supportsSessionStorage()) {
+        this._logstatus('Session storage is not supported');
         return false;
     }
 
-    localStorage.setItem(key, obj);
-
+    sessionStorage.setItem(key, obj);
     return true;
 };
 
 AuthenticationContext.prototype._getItem = function (key) {
-    if (!this._supportsLocalStorage()) {
-        this._logstatus('Local storage is not supported');
+
+    if (this.config && this.config.cacheLocation && this.config.cacheLocation === 'localStorage') {
+
+        if (!this._supportsLocalStorage()) {
+            this._logstatus('Local storage is not supported');
+            return null;
+        }
+
+        return localStorage.getItem(key);
+    }
+
+    // Default as session storage
+    if (!this._supportsSessionStorage()) {
+        this._logstatus('Session storage is not supported');
         return null;
     }
 
-    return localStorage.getItem(key);
+    return sessionStorage.getItem(key);
 };
 
 AuthenticationContext.prototype._supportsLocalStorage = function () {
     try {
         return 'localStorage' in window && window['localStorage'];
+    } catch (e) {
+        return false;
+    }
+};
+
+AuthenticationContext.prototype._supportsSessionStorage = function () {
+    try {
+        return 'sessionStorage' in window && window['sessionStorage'];
     } catch (e) {
         return false;
     }
@@ -1019,274 +1050,11 @@ AuthenticationContext.prototype._cloneConfig = function (obj) {
 };
 
 AuthenticationContext.prototype._libVersion = function () {
-    return '0.0.3';
+    return '1.0.0';
 };
 
-AuthenticationContext.prototype._addClientId = function () {
+AuthenticationContext.prototype._addClientId = function() {
     // x-client-SKU 
     // x-client-Ver 
     return '&x-client-SKU=Js&x-client-Ver=' + this._libVersion();
 };
-
-function adalAngularModules() {
-    // ============= Angular modules- Start =============
-    if (typeof angular !== 'undefined') {
-
-        var AdalModule = angular.module('AdalAngular', []);
-
-        AdalModule.provider('adalAuthenticationService', function () {
-            var _adal = null;
-            var _oauthData = { isAuthenticated: false, userName: '', loginError: '', profile: '' };
-
-            var updateDataFromCache = function (resource) {
-                // only cache lookup here to not interrupt with events
-                var token = _adal.getCachedToken(resource);
-                _oauthData.isAuthenticated = token !== null && token.length > 0;
-                var user = _adal.getCachedUser() || { userName: '' };
-                _oauthData.userName = user.userName;
-                _oauthData.profile = user.profile;
-                _oauthData.loginError = _adal.getLoginError();
-            };
-
-            this.init = function (configOptions, httpProvider) {
-                if (configOptions) {
-                    // redirect and logout_redirect are set to current location by default
-                    var existingHash = window.location.hash;
-                    var pathDefault = window.location.href;
-                    if (existingHash) {
-                        pathDefault = pathDefault.replace(existingHash, '');
-                    }
-                    configOptions.redirectUri = configOptions.redirectUri || pathDefault;
-                    configOptions.postLogoutRedirectUri = configOptions.postLogoutRedirectUri || pathDefault;
-
-                    if (httpProvider && httpProvider.interceptors) {
-                        httpProvider.interceptors.push('ProtectedResourceInterceptor');
-                    }
-
-                    // create instance with given config
-                    _adal = new AuthenticationContext(configOptions);
-                } else {
-                    throw new Error('You must set configOptions, when calling init');
-                }
-
-                // loginresource is used to set authenticated status
-                updateDataFromCache(_adal.config.loginResource);
-            };
-
-            // special function that exposes methods in Angular controller
-            // $rootScope, $window, $q, $location, $timeout are injected by Angular
-            this.$get = ['$rootScope', '$window', '$q', '$location', '$timeout', function ($rootScope, $window, $q, $location, $timeout) {
-
-                var locationChangeHandler = function () {
-                    var hash = $window.location.hash;
-
-                    if (_adal.isCallback(hash)) {
-                        // callback can come from login or iframe request
-
-                        var requestInfo = _adal.getRequestInfo(hash);
-                        _adal.saveTokenFromHash(requestInfo);
-                        $window.location.hash = '';
-
-                        if (requestInfo.requestType !== _adal.REQUEST_TYPE.LOGIN) {
-                            _adal.callback = $window.parent.AuthenticationContext().callback;
-                        }
-
-                        // Return to callback if it is send from iframe
-                        if (requestInfo.stateMatch) {
-                            if (typeof _adal.callback === 'function') {
-                                // Call within the same context without full page redirect keeps the callback
-                                if (requestInfo.requestType === _adal.REQUEST_TYPE.RENEW_TOKEN) {
-                                    // Idtoken or Accestoken can be renewed
-                                    if (requestInfo.parameters['access_token']) {
-                                        _adal.callback(_adal._getItem(_adal.CONSTANTS.STORAGE.ERROR_DESCRIPTION), requestInfo.parameters['access_token']);
-                                        return;
-                                    } else if (requestInfo.parameters['id_token']) {
-                                        _adal.callback(_adal._getItem(_adal.CONSTANTS.STORAGE.ERROR_DESCRIPTION), requestInfo.parameters['id_token']);
-                                        return;
-                                    }
-                                }
-                            } else {
-                                // normal full login redirect happened on the page
-                                updateDataFromCache(_adal.config.loginResource);
-                                if (_oauthData.userName) {
-                                    //IDtoken is added as token for the app
-                                    $timeout(function () {
-                                        updateDataFromCache(_adal.config.loginResource);
-                                        $rootScope.userInfo = _oauthData;
-                                        // redirect to login requested page
-                                        var loginStartPage = _adal._getItem(_adal.CONSTANTS.STORAGE.START_PAGE);
-                                        if (loginStartPage) {
-                                            $location.path(loginStartPage);
-                                        }
-                                    }, 1);
-                                    $rootScope.$broadcast('adal:loginSuccess');
-                                } else {
-                                    $rootScope.$broadcast('adal:loginFailure', _adal._getItem(_adal.CONSTANTS.STORAGE.ERROR_DESCRIPTION));
-                                }
-                            }
-                        }
-                    } else {
-                        // No callback. App resumes after closing or moving to new page.
-                        // Check token and username             
-                        updateDataFromCache(_adal.config.loginResource);
-                        if (!_adal._renewActive && !_oauthData.isAuthenticated && _oauthData.userName) {
-                            if (!_adal._getItem(_adal.CONSTANTS.STORAGE.FAILED_RENEW)) {
-                                _adal.acquireToken(_adal.config.loginResource, function (error, tokenOut) {
-                                    if (error) {
-                                        $rootScope.$broadcast('adal:loginFailure', 'auto renew failure');
-                                    } else {
-                                        if (tokenOut) {
-                                            _oauthData.isAuthenticated = true;
-                                        }
-                                    }
-                                });
-                            }
-                        }
-                    }
-
-                    $timeout(function () {
-                        updateDataFromCache(_adal.config.loginResource);
-                        $rootScope.userInfo = _oauthData;
-                    }, 1);
-                };
-
-                var routeChangeHandler = function (e, nextRoute) {
-                    if (nextRoute.$$route && nextRoute.$$route.requireADLogin) {
-                        if (!_oauthData.isAuthenticated) {
-                            console.log('Route change event for:' + nextRoute.$$route.originalPath);
-                            if (_adal.config && _adal.config.localLoginUrl) {
-                                $location.path(_adal.config.localLoginUrl);
-                            } else {
-                                // directly start login flow
-                                _adal._saveItem(_adal.CONSTANTS.STORAGE.START_PAGE, nextRoute.$$route.originalPath);
-                                console.log('Start login at:' + window.location.href);
-                                $rootScope.$broadcast('adal:loginRedirect');
-                                _adal.login();
-                            }
-                        }
-                    }
-                };
-
-                // Route change event tracking to receive fragment and also auto renew tokens
-                $rootScope.$on('$routeChangeStart', routeChangeHandler);
-
-                $rootScope.$on('$locationChangeStart', locationChangeHandler);
-
-                updateDataFromCache(_adal.config.loginResource);
-                $rootScope.userInfo = _oauthData;
-
-                return {
-                    // public methods will be here that are accessible from Controller
-                    config: _adal.config,
-                    login: function () {
-                        _adal.login();
-                    },
-                    loginInProgress: function () {
-                        return _adal.loginInProgress();
-                    },
-                    logOut: function () {
-                        _adal.logOut();
-                        //call signout related method
-                    },
-                    getCachedToken: function (resource) {
-                        return _adal.getCachedToken(resource);
-                    },
-                    userInfo: _oauthData,
-                    acquireToken: function (resource) {
-                        // automated token request call
-                        var deferred = $q.defer();
-                        _adal.acquireToken(resource, function (error, tokenOut) {
-                            if (error) {
-                                _adal._logstatus('err :' + error);
-                                deferred.reject(error);
-                            } else {
-                                deferred.resolve(tokenOut);
-                            }
-                        });
-
-                        return deferred.promise;
-                    },
-                    getUser: function () {
-                        var deferred = $q.defer();
-                        _adal.getUser(function (error, user) {
-                            if (error) {
-                                _adal._logstatus('err :' + error);
-                                deferred.reject(error);
-                            } else {
-                                deferred.resolve(user);
-                            }
-                        });
-
-                        return deferred.promise;
-                    },
-                    getResourceForEndpoint: function (endpoint) {
-                        var resource = _adal.getResourceForEndpoint(endpoint);
-                        return resource;
-                    },
-                    clearCache: function () {
-                        _adal.clearCache();
-                    },
-                    clearCacheForResource: function (resource) {
-                        _adal.clearCacheForResource(resource);
-                    }
-                };
-            }];
-        });
-
-        // Interceptor for http if needed
-        AdalModule.factory('ProtectedResourceInterceptor', ['adalAuthenticationService', '$q', '$rootScope', function (authService, $q, $rootScope) {
-
-            return {
-                request: function (config) {
-                    if (config) {
-
-                        // This interceptor needs to load service, but dependeny definition causes circular reference error.
-                        // Loading with injector is suggested at github. https://github.com/angular/angular.js/issues/2367
-
-                        config.headers = config.headers || {};
-
-                        var resource = authService.getResourceForEndpoint(config.url);
-                        var tokenStored = authService.getCachedToken(resource);
-                        if (tokenStored) {
-                            // check endpoint mapping if provided
-                            config.headers.Authorization = 'Bearer ' + tokenStored;
-                            return config;
-                        } else {
-                            // Cancel request if login is starting
-                            if (authService.loginInProgress()) {
-                                return $q.reject();
-                            } else if (authService.config && resource !== authService.config.clientId) {
-                                // external endpoints
-                                // delayed request to return after iframe completes
-                                var delayedRequest = $q.defer();
-                                authService.acquireToken(resource).then(function (token) {
-                                    config.headers.Authorization = 'Bearer ' + token;
-                                    delayedRequest.resolve(config);
-                                }, function (err) {
-                                    delayedRequest.reject(err);
-                                });
-
-                                return delayedRequest.promise;
-                            }
-                        }
-
-                        return config;
-                    }
-                },
-                responseError: function (rejection) {
-                    if (rejection && rejection.status === 401) {
-                        var resource = authService.getResourceForEndpoint(rejection.config.url);
-                        authService.clearCacheForResource(resource);
-                        $rootScope.$broadcast('adal:notAuthorized', rejection, resource);
-                    }
-
-                    return $q.reject(rejection);
-                }
-            };
-        }]);
-    } else {
-        console.log('Angular.JS is not included');
-    }
-}
-adalAngularModules();
-// ============= Angular modules- End =============
