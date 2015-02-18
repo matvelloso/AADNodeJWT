@@ -7,9 +7,13 @@ How to set this demo:
 
 1-Create a web app in Azure Active Directory. <br>
 
-2-Copy the client ID and use it both on angularApp.js (the client code using ADAL.js) as well as the config.js (the server code in Node that validates the token).<br>
+2-Copy the client ID and the tenant ID information and use it on angularApp.js (the client code using ADAL.js)<br>
 
-3-Set the tenant ID on both files (usually it is in the format of "yourcompanyname.onmicrosoft.com". This information also comes from the tenant you created in Azure Active Directory)
+4-Use the same tenant ID information in the authority setting in config.js (the server code in Node that validates the token).<br>
 
-4-Run and log on with a valid user
+5-Set an array of allowed audiences in the config.js. Typically this might be just the client ID of your app (the client ADAL.js being allowed to call the server Node.js) but potentially you could have other apps being allowed to call this service, hence we're using an array<BR>
+
+6-Make sure the reply URI in your AAD application setting matches the URL of this web application
+
+7-Run and log on with a valid user
 
