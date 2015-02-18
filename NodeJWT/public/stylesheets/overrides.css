@@ -1,0 +1,91 @@
+body {
+    font-size: 20px;
+    color: #3a5795;
+}
+#search-results-title {
+    color: #3a5795;
+    font-size: 1em;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    padding-left: 5px;
+}
+ul.search-results {
+    list-style-type: none;
+}
+ul.search-results li {
+    padding: 10px;
+    background-color: white;
+    color: #3a5795;
+}
+ul.search-results li .info {
+    color: #CCC;
+    font-size: 0.8em;
+}
+
+ul.search-results li a {
+    font-size: 1em;
+    color: #3a5795;
+}
+
+ul.search-results li a:hover {
+    text-decoration: none;
+}
+
+ul.search-results li a:hover .name {
+    text-decoration: underline;
+}
+
+.search-title {
+    font-size: 16px;
+    padding: 10px;
+}.navbar {
+    height: 70px;
+    background-color: #3a5795;
+}
+.navbar-inverse .navbar-brand {
+    font-size: 25px;
+    color: #FFF;
+}
+
+.navbar-inverse .btn-link {
+    color: #FFF;
+}
+.navbar button {
+    font-size: 20px;
+    color: #FFF;
+}
+#home.authenticated #panel-101 {
+    margin-top: 10px;
+}
+#home.authenticated .panel header {
+    height: auto;
+    padding: 10px;
+    background-color: #3a5795;
+}
+#home.authenticated .panel header i {
+    top: 0;
+}
+#home.authenticated .panel header span {
+    top: 0;
+}
+#home.authenticated .tile-btn {
+    height: 136px;
+    width: 168px;
+    background-color: #3a5795;
+}
+#home.authenticated .tile-btn i, #home.authenticated .tile-btn span {
+    font-size: 30px;
+    line-height: 30px;
+    margin-top: 24px;
+}
+#home.authenticated .tile-btn i.icon-icomoon-file-word {
+    line-height: 27px;
+}
+.homeNoAuth .btn.btn-primary {
+    background-color: #3a5795;
+}
+
+.icon-icomoon-file-excel {
+    color: #207244;
+}

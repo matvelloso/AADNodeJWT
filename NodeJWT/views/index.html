@@ -1,0 +1,53 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>Node JWT validation sample</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="fonts/font-awesome/css/font-awesome.min.css">
+    <link rel="stylesheet" href="stylesheets/overrides.css" />
+    <link rel="stylesheet" href="stylesheets/madmin.css" />
+    <link rel="stylesheet" href="fonts/icomoon-pack-madmin-1.5/style.css" />
+</head>
+<body ng-app="docsApp" ng-controller="homeCtrl" class="ng-app:docsApp" id="ng-app" role="document">
+    <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+        <div class="container">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle collapsed"
+                        data-toggle="collapse"
+                        data-target=".navbar-collapse">
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="#/Home">Node JWT validation sample</a>
+            </div>
+            <div class="navbar-collapse collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li><button class="btn btn-link" ng-show="userInfo.isAuthenticated" ng-click="logout()">Logout</button></li>
+                    <li><button class="btn btn-link" ng-hide="userInfo.isAuthenticated" ng-click="login()">Login</button></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <br />
+    <div class="container" role="main">
+        <div class="row">
+            <div ng-view class="panel-body">
+                   
+            </div>
+        </div>
+       
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.25/angular.min.js"></script>
+        <script src="https://code.angularjs.org/1.2.25/angular-route.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+        <script src="scripts/angular-ui-bootstrap.js"></script>
+        <script src="scripts/adal.js"></script>
+        <script src="scripts/angularApp.js"></script>
+        <script src="scripts/homeCtrl.js"></script>
+        <script src="scripts/searchCtrl.js"></script>
+        <script src="scripts/searchSvc.js"></script>
+     </div>
+</body>
+</html>
