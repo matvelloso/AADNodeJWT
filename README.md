@@ -17,3 +17,10 @@ How to set this demo:
 
 7-Run and log on with a valid user
 
+
+Some notes:
+
+-There is no caching of any kind implemented yet. Ideally we should be able to cache some of the calls to the metadata endpoints so we don't have to call the authority endpoint for every single request. This is something you definitely want to do in production<br>
+-All error handling falls into a 401 unauthorized response. We are not doing anything fancy in terms of dealing with particular scenarios where endpoints are down or the payload isn't what we expect<br>
+-api.js demonstrates the use of two different routers, one that injects the authorization checks and other that doesn't. That way you can have apis that are security enforced and others that don't do any security checks<br>
+-convertCertificate function makes sure the cert has the right format (/n every 64 chars and the begin and end cert marks). Without this the certificate functions will fail reading the cert.
