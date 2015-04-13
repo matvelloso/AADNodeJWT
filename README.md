@@ -1,4 +1,31 @@
-﻿# Azure Active Directory JWT token validation in Node.js
+# Azure Active Directory JWT token validation in Node.js
+
+## V2 ##
+
+the new version is now enabled on the JWT Token Validation component. 
+
+each instance of aadJwt will have it is own cache bound to a single AAD authority.
+
+you can extract token as 
+
+     var token = request.headers.authorization.substring(7, request.headers.authorization.length);
+
+then call token validate token 
+
+      aadJwt.validatetoken(token, function (bValid) {/* magic here*/});
+    
+or you can pass the entire request object 
+
+      aadJwt.validateRequest(reqObject, function (bValid) {/* magic here*/});
+
+in both cases you can force a cache refresh 
+
+	  var bCacheRefresh = true;
+      aadJwt.validateRequest(reqObject, function (bValid) {/* magic here*/}, bCacheRefresh);
+
+
+
+## V1 ##
 
 
 This sample demonstrates how to validate a JWT token issued by Azure Active Directory in Node.js. Using ADAL.js in order to authenticate the user, we make a call to an API in Node JS and then validate the token issuer, audience and expiration. We also show how to use express to selectively inject the authorization code so some APIs can be secure and others not. <br>
