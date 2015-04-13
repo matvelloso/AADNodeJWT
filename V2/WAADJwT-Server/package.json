@@ -1,0 +1,10 @@
+{
+  "name": "WAADJwT-Server",
+  "version": "0.0.0",
+  "description": "WAADJwT-Server",
+  "main": "server.js",
+  "author": {
+    "name": "khnidk",
+    "email": ""
+  }
+}
