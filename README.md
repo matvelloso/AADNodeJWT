@@ -51,3 +51,5 @@ Some notes:
 -All error handling falls into a 401 unauthorized response. We are not doing anything fancy in terms of dealing with particular scenarios where endpoints are down or the payload isn't what we expect<br>
 -api.js demonstrates the use of two different routers, one that injects the authorization checks and other that doesn't. That way you can have apis that are security enforced and others that don't do any security checks<br>
 -convertCertificate function makes sure the cert has the right format (/n every 64 chars and the begin and end cert marks). Without this the certificate functions will fail reading the cert.
+
+This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/). For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
